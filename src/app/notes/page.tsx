@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
+  ArrowLeft,
+  ArrowRight,
   BookOpenText,
   LogOut,
   Pin,
@@ -13,6 +15,7 @@ import {
   Trash2,
   UserCircle,
   CheckCircle2,
+  X,
 } from "lucide-react";
 
 import { signOut } from "@/app/auth-actions";
@@ -27,6 +30,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CollapsibleSidebar } from "@/components/notes/collapsible-sidebar";
+import { ResizableEditorPane } from "@/components/notes/resizable-editor-pane";
 import { SaveNoteButton } from "@/components/notes/save-note-button";
 import {
   Card,
@@ -50,6 +55,7 @@ import { MissingSupabaseConfigError } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+const NOTES_PER_PAGE = 9;
 
 type NotesPageProps = {
   searchParams: Promise<NotesSearchParams>;
@@ -84,8 +90,7 @@ async function getNotesPageModel(query: ReturnType<typeof normalizeNotesQuery>) 
   }
 
   const notes = await listNotes(supabase, query);
-  const selected =
-    notes.find((note) => note.id === query.noteId) ?? notes[0] ?? null;
+  const selected = notes.find((note) => note.id === query.noteId) ?? null;
   const tags = collectTags(notes);
 
   return {
@@ -104,11 +109,23 @@ function NotesWorkspace({
   tags,
   userEmail,
 }: Awaited<ReturnType<typeof getNotesPageModel>>) {
+  const editorOpen = query.mode === "edit" && selected !== null;
+  const totalPages = Math.max(1, Math.ceil(notes.length / NOTES_PER_PAGE));
+  const currentPage = Math.min(query.page, totalPages);
+  const pageStart = (currentPage - 1) * NOTES_PER_PAGE;
+  const visibleNotes = notes.slice(pageStart, pageStart + NOTES_PER_PAGE);
+
   return (
     <main className="min-h-screen bg-background">
-      <div className="grid min-h-screen gap-4 p-4 lg:grid-cols-[22rem_1fr]">
-        <aside className="flex min-h-[calc(100vh-2rem)] flex-col rounded-lg border bg-card">
-          <div className="flex items-center justify-between gap-3 p-4">
+      <div
+        className={`grid min-h-screen gap-4 p-4 ${
+          editorOpen
+            ? "lg:grid-cols-[auto_minmax(0,1fr)_auto]"
+            : "lg:grid-cols-[auto_minmax(0,1fr)]"
+        }`}
+      >
+        <CollapsibleSidebar>
+          <div className="flex items-center justify-between gap-3 p-4 pr-14">
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold">Notes</h1>
               <p className="truncate text-xs text-muted-foreground">
@@ -136,6 +153,7 @@ function NotesWorkspace({
                 {query.tag ? (
                   <input name="tag" type="hidden" value={query.tag} />
                 ) : null}
+                <input name="page" type="hidden" value="1" />
                 <Button size="icon" type="submit" variant="secondary">
                   <Search className="size-4" />
                 </Button>
@@ -146,7 +164,14 @@ function NotesWorkspace({
                 asChild
                 variant={query.view === "active" ? "default" : "secondary"}
               >
-                <Link href={buildNotesHref(query, { view: "active", noteId: "" })}>
+                <Link
+                  href={buildNotesHref(query, {
+                    mode: "browse",
+                    page: 1,
+                    view: "active",
+                    noteId: "",
+                  })}
+                >
                   Active
                 </Link>
               </Button>
@@ -156,6 +181,8 @@ function NotesWorkspace({
               >
                 <Link
                   href={buildNotesHref(query, {
+                    mode: "browse",
+                    page: 1,
                     view: "archived",
                     noteId: "",
                   })}
@@ -179,7 +206,14 @@ function NotesWorkspace({
             <div className="flex flex-wrap gap-2 p-4">
               {query.tag ? (
                 <Button asChild size="sm" variant="secondary">
-                  <Link href={buildNotesHref(query, { tag: "", noteId: "" })}>
+                  <Link
+                    href={buildNotesHref(query, {
+                      mode: "browse",
+                      page: 1,
+                      tag: "",
+                      noteId: "",
+                    })}
+                  >
                     <RotateCcw className="size-3" />
                     All tags
                   </Link>
@@ -191,39 +225,68 @@ function NotesWorkspace({
                   key={tag}
                   variant={query.tag === tag ? "default" : "secondary"}
                 >
-                  <Link href={buildNotesHref(query, { tag, noteId: "" })}>
+                  <Link
+                    href={buildNotesHref(query, {
+                      mode: "browse",
+                      page: 1,
+                      tag,
+                      noteId: "",
+                    })}
+                  >
                     {tag}
                   </Link>
                 </Badge>
               ))}
             </div>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {notes.length ? (
-              <div className="grid gap-2">
-                {notes.map((note) => (
-                  <NoteListItem
-                    href={buildNotesHref(query, { noteId: note.id })}
-                    key={note.id}
-                    note={note}
-                    selected={selected?.id === note.id}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyList query={query} />
-            )}
-          </div>
+          <div className="min-h-0 flex-1" />
           <Separator />
           <ProfileMenu userEmail={userEmail} />
-        </aside>
-        <section className="min-h-[calc(100vh-2rem)]">
-          {selected ? (
-            <NoteEditor note={selected} saved={query.saved} />
+        </CollapsibleSidebar>
+        <section className="flex min-h-[calc(100vh-2rem)] flex-col gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Board</h2>
+              <p className="text-sm text-muted-foreground">
+                {notes.length
+                  ? `${notes.length} notes shown 9 at a time`
+                  : "No notes in this view"}
+              </p>
+            </div>
+            {totalPages > 1 ? (
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+            ) : null}
+          </div>
+          {visibleNotes.length ? (
+            <div className="grid content-start items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {visibleNotes.map((note) => (
+                <NoteListItem
+                  href={buildNotesHref(query, {
+                    mode: "edit",
+                    noteId: note.id,
+                  })}
+                  key={note.id}
+                  note={note}
+                  selected={editorOpen && selected.id === note.id}
+                />
+              ))}
+            </div>
           ) : (
-            <EmptyEditor />
+            <EmptyList query={query} />
           )}
+          <BoardPagination
+            currentPage={currentPage}
+            query={query}
+            totalPages={totalPages}
+          />
         </section>
+        {editorOpen ? (
+          <ResizableEditorPane>
+            <NoteEditor note={selected} query={query} saved={query.saved} />
+          </ResizableEditorPane>
+        ) : null}
       </div>
     </main>
   );
@@ -258,6 +321,88 @@ function ProfileMenu({ userEmail }: { userEmail: string }) {
   );
 }
 
+function BoardPagination({
+  currentPage,
+  query,
+  totalPages,
+}: {
+  currentPage: number;
+  query: ReturnType<typeof normalizeNotesQuery>;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) {
+    return <div />;
+  }
+
+  return (
+    <nav
+      aria-label="Board pages"
+      className="flex items-center justify-between gap-3"
+    >
+      {currentPage === 1 ? (
+        <Button disabled variant="secondary">
+          <ArrowLeft className="size-4" />
+          Previous
+        </Button>
+      ) : (
+        <Button asChild variant="secondary">
+          <Link
+            href={buildNotesHref(query, {
+              mode: "browse",
+              noteId: "",
+              page: currentPage - 1,
+            })}
+          >
+            <ArrowLeft className="size-4" />
+            Previous
+          </Link>
+        </Button>
+      )}
+      <div className="flex gap-1">
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+          (page) => (
+            <Button
+              asChild
+              key={page}
+              size="icon"
+              variant={page === currentPage ? "default" : "secondary"}
+            >
+              <Link
+                href={buildNotesHref(query, {
+                  mode: "browse",
+                  noteId: "",
+                  page,
+                })}
+              >
+                {page}
+              </Link>
+            </Button>
+          ),
+        )}
+      </div>
+      {currentPage === totalPages ? (
+        <Button disabled variant="secondary">
+          Next
+          <ArrowRight className="size-4" />
+        </Button>
+      ) : (
+        <Button asChild variant="secondary">
+          <Link
+            href={buildNotesHref(query, {
+              mode: "browse",
+              noteId: "",
+              page: currentPage + 1,
+            })}
+          >
+            Next
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      )}
+    </nav>
+  );
+}
+
 function NoteListItem({
   href,
   note,
@@ -269,10 +414,10 @@ function NoteListItem({
 }) {
   return (
     <Link
-      className={`grid gap-2 rounded-md border p-3 transition-colors ${
+      className={`grid min-h-32 content-between gap-2 rounded-md border bg-card p-3 transition-colors ${
         selected
           ? "border-primary bg-primary/10"
-          : "border-transparent hover:bg-muted"
+          : "border-border hover:bg-muted"
       }`}
       href={href}
     >
@@ -291,7 +436,15 @@ function NoteListItem({
   );
 }
 
-function NoteEditor({ note, saved }: { note: Note; saved: boolean }) {
+function NoteEditor({
+  note,
+  query,
+  saved,
+}: {
+  note: Note;
+  query: ReturnType<typeof normalizeNotesQuery>;
+  saved: boolean;
+}) {
   const tagText = note.tags.join(", ");
 
   return (
@@ -306,6 +459,12 @@ function NoteEditor({ note, saved }: { note: Note; saved: boolean }) {
             <CardDescription>Updated {formatDate(note.updated_at)}</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild size="icon" variant="ghost">
+              <Link href={buildNotesHref(query, { mode: "browse", noteId: "" })}>
+                <X className="size-4" />
+                <span className="sr-only">Close editor</span>
+              </Link>
+            </Button>
             <form action={togglePinned}>
               <input name="id" type="hidden" value={note.id} />
               <input
@@ -419,20 +578,6 @@ function EmptyList({ query }: { query: ReturnType<typeof normalizeNotesQuery> })
         </Button>
       ) : null}
     </div>
-  );
-}
-
-function EmptyEditor() {
-  return (
-    <Card className="flex min-h-full items-center justify-center">
-      <CardContent className="grid max-w-sm gap-3 p-8 text-center">
-        <BookOpenText className="mx-auto size-10 text-primary" />
-        <h2 className="text-lg font-semibold">Select or create a note</h2>
-        <p className="text-sm text-muted-foreground">
-          Your editor appears here once a note is available.
-        </p>
-      </CardContent>
-    </Card>
   );
 }
 

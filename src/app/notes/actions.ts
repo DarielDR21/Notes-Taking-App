@@ -38,7 +38,7 @@ export async function createNote(formData: FormData) {
   }
 
   revalidatePath("/notes");
-  redirect(`/notes?note=${data.id}`);
+  redirect(`/notes?note=${data.id}&mode=edit`);
 }
 
 export async function updateNote(formData: FormData) {
@@ -53,7 +53,7 @@ export async function updateNote(formData: FormData) {
   }
 
   revalidatePath("/notes");
-  redirect(`/notes?note=${id}&saved=1`);
+  redirect(`/notes?note=${id}&mode=edit&saved=1`);
 }
 
 export async function deleteNote(formData: FormData) {
@@ -84,7 +84,7 @@ export async function togglePinned(formData: FormData) {
   }
 
   revalidatePath("/notes");
-  redirect(`/notes?note=${id}`);
+  redirect(`/notes?note=${id}&mode=edit`);
 }
 
 export async function archiveNote(formData: FormData) {
@@ -118,5 +118,5 @@ export async function restoreNote(formData: FormData) {
   }
 
   revalidatePath("/notes");
-  redirect(`/notes?note=${id}`);
+  redirect(`/notes?note=${id}&mode=edit`);
 }
