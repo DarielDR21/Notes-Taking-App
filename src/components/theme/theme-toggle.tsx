@@ -1,19 +1,16 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "notes-theme";
+const THEME_EVENT = "notes-theme-change";
 
 type Theme = "light" | "dark";
 
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
+function getPreferredTheme(): Theme {
   const savedTheme = window.localStorage.getItem(STORAGE_KEY);
 
   if (savedTheme === "light" || savedTheme === "dark") {
@@ -25,17 +22,33 @@ function getInitialTheme(): Theme {
     : "light";
 }
 
-function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle("dark", theme === "dark");
-  document.documentElement.style.colorScheme = theme;
+function subscribe(onStoreChange: () => void) {
+  function handleStorage(event: StorageEvent) {
+    if (event.key === STORAGE_KEY || event.key === null) {
+      onStoreChange();
+    }
+  }
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(THEME_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(THEME_EVENT, onStoreChange);
+  };
+}
+
+function persistTheme(theme: Theme) {
   window.localStorage.setItem(STORAGE_KEY, theme);
+  window.dispatchEvent(new Event(THEME_EVENT));
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const theme = useSyncExternalStore(subscribe, getPreferredTheme, () => "light");
 
   useEffect(() => {
-    applyTheme(theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   const nextTheme = theme === "dark" ? "light" : "dark";
@@ -45,8 +58,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       aria-label={`Switch to ${nextTheme} mode`}
       className={className}
       onClick={() => {
-        setTheme(nextTheme);
-        applyTheme(nextTheme);
+        persistTheme(nextTheme);
       }}
       size="icon"
       suppressHydrationWarning
