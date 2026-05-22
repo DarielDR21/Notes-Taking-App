@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { CollapsibleSidebar } from "@/components/notes/collapsible-sidebar";
 import { ResizableEditorPane } from "@/components/notes/resizable-editor-pane";
 import { SaveNoteButton } from "@/components/notes/save-note-button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   Card,
   CardContent,
@@ -117,6 +118,9 @@ function NotesWorkspace({
 
   return (
     <main className="min-h-screen bg-background">
+      <div className="fixed right-4 top-4 z-50">
+        <ThemeToggle />
+      </div>
       <div
         className={`grid min-h-screen gap-4 p-4 ${
           editorOpen
