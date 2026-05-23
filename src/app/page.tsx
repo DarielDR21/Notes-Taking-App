@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BookMarked, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   Card,
   CardContent,
@@ -29,8 +30,11 @@ export default async function Home() {
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="gap-3">
-          <div className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <BookMarked className="size-5" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <BookMarked className="size-5" />
+            </div>
+            <ThemeToggle />
           </div>
           <div>
             <CardTitle className="text-2xl">Notes</CardTitle>
