@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -33,12 +34,17 @@ export function AuthForm({ mode, action }: AuthFormProps) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>{isLogin ? "Sign in" : "Create account"}</CardTitle>
-        <CardDescription>
-          {isLogin
-            ? "Open your private notes workspace."
-            : "Start a new private notes workspace."}
-        </CardDescription>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle>{isLogin ? "Sign in" : "Create account"}</CardTitle>
+            <CardDescription>
+              {isLogin
+                ? "Open your private notes workspace."
+                : "Start a new private notes workspace."}
+            </CardDescription>
+          </div>
+          <ThemeToggle />
+        </div>
       </CardHeader>
       <form action={formAction}>
         <CardContent className="grid gap-4">

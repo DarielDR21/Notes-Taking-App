@@ -44,7 +44,7 @@ function persistTheme(theme: Theme) {
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const theme = useSyncExternalStore(subscribe, getPreferredTheme, () => "dark");
+  const theme = useSyncExternalStore(subscribe, getPreferredTheme, () => "light");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");

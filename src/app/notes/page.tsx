@@ -118,7 +118,7 @@ function NotesWorkspace({
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="fixed right-4 top-4 z-50">
+      <div className="fixed right-4 top-16 z-50 lg:top-4">
         <ThemeToggle />
       </div>
       <div
