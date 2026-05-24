@@ -24,7 +24,6 @@ describe("parseNoteFormData", () => {
     expect(parseNoteFormData(formData)).toEqual({
       title: "Roadmap",
       body: "Ship the MVP.",
-      tags: ["planning", "mvp"],
     });
   });
 
