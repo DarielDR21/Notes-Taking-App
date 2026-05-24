@@ -118,9 +118,6 @@ function NotesWorkspace({
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="fixed right-4 top-16 z-50 lg:top-4">
-        <ThemeToggle />
-      </div>
       <div
         className={`grid min-h-screen gap-4 p-4 ${
           editorOpen
@@ -312,6 +309,11 @@ function ProfileMenu({ userEmail }: { userEmail: string }) {
         <div className="px-2 py-2">
           <p className="truncate text-sm font-medium">{userEmail}</p>
           <p className="text-xs text-muted-foreground">Signed in</p>
+        </div>
+        <Separator className="my-2" />
+        <div className="flex items-center justify-between gap-3 px-2 py-2">
+          <span className="text-sm">Dark mode</span>
+          <ThemeToggle />
         </div>
         <Separator className="my-2" />
         <form action={signOut}>
