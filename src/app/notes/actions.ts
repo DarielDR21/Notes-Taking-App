@@ -56,7 +56,23 @@ export async function updateNote(formData: FormData) {
   redirect(`/notes?note=${id}&mode=edit&saved=1`);
 }
 
-export async function deleteNote(formData: FormData) {
+export async function trashNote(formData: FormData) {
+  const id = parseNoteId(formData);
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("notes")
+    .update({ trashed_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/notes");
+  redirect("/notes");
+}
+
+export async function deleteNotePermanently(formData: FormData) {
   const id = parseNoteId(formData);
   const { supabase } = await requireUser();
   const { error } = await supabase.from("notes").delete().eq("id", id);
@@ -66,7 +82,22 @@ export async function deleteNote(formData: FormData) {
   }
 
   revalidatePath("/notes");
-  redirect("/notes");
+  redirect("/notes?view=trash");
+}
+
+export async function deleteAllTrashedNotes() {
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("notes")
+    .delete()
+    .not("trashed_at", "is", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/notes");
+  redirect("/notes?view=trash");
 }
 
 export async function togglePinned(formData: FormData) {
@@ -110,7 +141,7 @@ export async function restoreNote(formData: FormData) {
 
   const { error } = await supabase
     .from("notes")
-    .update({ archived_at: null })
+    .update({ archived_at: null, trashed_at: null })
     .eq("id", id);
 
   if (error) {

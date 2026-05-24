@@ -11,7 +11,6 @@ import {
   PinOff,
   Plus,
   RotateCcw,
-  Search,
   Trash2,
   UserCircle,
   CheckCircle2,
@@ -22,8 +21,9 @@ import { signOut } from "@/app/auth-actions";
 import {
   archiveNote,
   createNote,
-  deleteNote,
+  deleteAllTrashedNotes,
   restoreNote,
+  trashNote,
   togglePinned,
   updateNote,
 } from "@/app/notes/actions";
@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Note } from "@/lib/database.types";
 import { collectTags, listNotes } from "@/lib/notes/data";
 import {
@@ -56,7 +57,7 @@ import { MissingSupabaseConfigError } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-const NOTES_PER_PAGE = 9;
+const NOTES_PER_PAGE = 16;
 
 type NotesPageProps = {
   searchParams: Promise<NotesSearchParams>;
@@ -115,6 +116,12 @@ function NotesWorkspace({
   const currentPage = Math.min(query.page, totalPages);
   const pageStart = (currentPage - 1) * NOTES_PER_PAGE;
   const visibleNotes = notes.slice(pageStart, pageStart + NOTES_PER_PAGE);
+  const boardTitle =
+    query.view === "trash"
+      ? "Trash"
+      : query.view === "archived"
+        ? "Archived"
+        : "Board";
 
   return (
     <main className="min-h-screen bg-background">
@@ -136,31 +143,7 @@ function NotesWorkspace({
           </div>
           <Separator />
           <div className="grid gap-3 p-4">
-            <form action="/notes" className="grid gap-2">
-              <Label className="sr-only" htmlFor="q">
-                Search notes
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  className="min-w-0"
-                  defaultValue={query.q}
-                  id="q"
-                  name="q"
-                  placeholder="Search title or body"
-                />
-                {query.view === "archived" ? (
-                  <input name="view" type="hidden" value="archived" />
-                ) : null}
-                {query.tag ? (
-                  <input name="tag" type="hidden" value={query.tag} />
-                ) : null}
-                <input name="page" type="hidden" value="1" />
-                <Button size="icon" type="submit" variant="secondary">
-                  <Search className="size-4" />
-                </Button>
-              </div>
-            </form>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-2">
               <Button
                 asChild
                 variant={query.view === "active" ? "default" : "secondary"}
@@ -191,16 +174,22 @@ function NotesWorkspace({
                   Archived
                 </Link>
               </Button>
-            </div>
-            <form action={createNote}>
-              <input name="title" type="hidden" value="Untitled note" />
-              <input name="body" type="hidden" value="" />
-              <input name="tags" type="hidden" value="" />
-              <Button className="w-full" type="submit">
-                <Plus className="size-4" />
-                New note
+              <Button
+                asChild
+                variant={query.view === "trash" ? "default" : "secondary"}
+              >
+                <Link
+                  href={buildNotesHref(query, {
+                    mode: "browse",
+                    page: 1,
+                    view: "trash",
+                    noteId: "",
+                  })}
+                >
+                  Trash
+                </Link>
               </Button>
-            </form>
+            </div>
           </div>
           <Separator />
           {tags.length ? (
@@ -245,23 +234,59 @@ function NotesWorkspace({
           <ProfileMenu userEmail={userEmail} />
         </CollapsibleSidebar>
         <section className="flex min-h-[calc(100vh-2rem)] flex-col gap-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)_minmax(0,1fr)] lg:items-end">
             <div>
-              <h2 className="text-xl font-semibold">Board</h2>
+              <h2 className="text-xl font-semibold">{boardTitle}</h2>
               <p className="text-sm text-muted-foreground">
                 {notes.length
-                  ? `${notes.length} notes shown 9 at a time`
+                  ? `${notes.length} notes shown ${NOTES_PER_PAGE} at a time`
                   : "No notes in this view"}
               </p>
             </div>
-            {totalPages > 1 ? (
-              <p className="text-sm text-muted-foreground">
+            <div className="mx-auto flex w-full max-w-xl items-center gap-2">
+              <form action="/notes" className="min-w-0 flex-1">
+              <Label className="sr-only" htmlFor="q">
+                Search notes
+              </Label>
+              <Input
+                className="min-w-0"
+                defaultValue={query.q}
+                id="q"
+                name="q"
+                placeholder="Search title or body"
+              />
+              {query.view !== "active" ? (
+                <input name="view" type="hidden" value={query.view} />
+              ) : null}
+              {query.tag ? (
+                <input name="tag" type="hidden" value={query.tag} />
+              ) : null}
+              <input name="page" type="hidden" value="1" />
+              </form>
+              <form action={createNote} className="shrink-0">
+                <input name="title" type="hidden" value="Untitled note" />
+                <input name="body" type="hidden" value="" />
+                <input name="tags" type="hidden" value="" />
+                <Button className="min-w-36" type="submit">
+                  <Plus className="size-4" />
+                  New note
+                </Button>
+              </form>
+            </div>
+            {query.view === "trash" && notes.length ? (
+              <form className="lg:justify-self-end" action={deleteAllTrashedNotes}>
+                <Button type="submit" variant="destructive">
+                  Delete all
+                </Button>
+              </form>
+            ) : totalPages > 1 ? (
+              <p className="text-sm text-muted-foreground lg:text-right">
                 Page {currentPage} of {totalPages}
               </p>
             ) : null}
           </div>
           {visibleNotes.length ? (
-            <div className="grid content-start items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid content-start items-start gap-3 md:grid-cols-2 xl:grid-cols-4">
               {visibleNotes.map((note) => (
                 <NoteListItem
                   href={buildNotesHref(query, {
@@ -419,26 +444,65 @@ function NoteListItem({
   selected: boolean;
 }) {
   return (
-    <Link
-      className={`grid min-h-32 content-between gap-2 rounded-md border bg-card p-3 transition-colors ${
+    <article
+      className={`grid min-h-36 content-between gap-2 rounded-md border bg-card p-3 transition-colors ${
         selected
           ? "border-primary bg-primary/10"
           : "border-border hover:bg-muted"
       }`}
-      href={href}
     >
       <div className="flex items-start justify-between gap-3">
-        <h2 className="line-clamp-1 text-sm font-medium">{note.title}</h2>
-        {note.is_pinned ? <Pin className="mt-0.5 size-3 text-primary" /> : null}
+        <Link className="min-w-0 flex-1" href={href}>
+          <h2 className="line-clamp-1 text-sm font-medium">{note.title}</h2>
+        </Link>
+        <div className="flex items-center gap-1">
+          {note.is_pinned && !note.trashed_at ? (
+            <Pin className="mt-0.5 size-3 text-primary" />
+          ) : null}
+          {note.trashed_at ? (
+            <form action={restoreNote}>
+              <input name="id" type="hidden" value={note.id} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" type="submit" variant="secondary">
+                    <ArchiveRestore className="size-4" />
+                    <span className="sr-only">Recover</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Recover</TooltipContent>
+              </Tooltip>
+            </form>
+          ) : (
+            <form action={trashNote}>
+              <input name="id" type="hidden" value={note.id} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="size-7 text-muted-foreground hover:text-destructive"
+                    size="icon"
+                    type="submit"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-4" />
+                    <span className="sr-only">Delete</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Delete</TooltipContent>
+              </Tooltip>
+            </form>
+          )}
+        </div>
       </div>
-      <p className="line-clamp-2 min-h-8 text-xs text-muted-foreground">
-        {note.body || "No body yet."}
-      </p>
-      <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-        <span>{formatDate(note.updated_at)}</span>
-        {note.tags.length ? <span>{note.tags.length} tags</span> : null}
-      </div>
-    </Link>
+      <Link className="grid content-between gap-2" href={href}>
+        <p className="line-clamp-2 min-h-8 text-xs text-muted-foreground">
+          {note.body || "No body yet."}
+        </p>
+        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+          <span>{formatDate(note.updated_at)}</span>
+          {note.tags.length ? <span>{note.tags.length} tags</span> : null}
+        </div>
+      </Link>
+    </article>
   );
 }
 
@@ -452,6 +516,7 @@ function NoteEditor({
   saved: boolean;
 }) {
   const tagText = note.tags.join(", ");
+  const noteInTrash = note.trashed_at !== null;
 
   return (
     <Card className="min-h-full">
@@ -465,46 +530,65 @@ function NoteEditor({
             <CardDescription>Updated {formatDate(note.updated_at)}</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild size="icon" variant="ghost">
-              <Link href={buildNotesHref(query, { mode: "browse", noteId: "" })}>
-                <X className="size-4" />
-                <span className="sr-only">Close editor</span>
-              </Link>
-            </Button>
-            <form action={togglePinned}>
-              <input name="id" type="hidden" value={note.id} />
-              <input
-                name="is_pinned"
-                type="hidden"
-                value={String(note.is_pinned)}
-              />
-              <Button size="sm" type="submit" variant="secondary">
-                {note.is_pinned ? (
-                  <PinOff className="size-4" />
-                ) : (
-                  <Pin className="size-4" />
-                )}
-                {note.is_pinned ? "Unpin" : "Pin"}
-              </Button>
-            </form>
-            <form action={note.archived_at ? restoreNote : archiveNote}>
-              <input name="id" type="hidden" value={note.id} />
-              <Button size="sm" type="submit" variant="secondary">
-                {note.archived_at ? (
-                  <ArchiveRestore className="size-4" />
-                ) : (
-                  <Archive className="size-4" />
-                )}
-                {note.archived_at ? "Restore" : "Archive"}
-              </Button>
-            </form>
-            <form action={deleteNote}>
-              <input name="id" type="hidden" value={note.id} />
-              <Button size="sm" type="submit" variant="destructive">
-                <Trash2 className="size-4" />
-                Delete
-              </Button>
-            </form>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild size="icon" variant="ghost">
+                  <Link href={buildNotesHref(query, { mode: "browse", noteId: "" })}>
+                    <X className="size-4" />
+                    <span className="sr-only">Close editor</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Close</TooltipContent>
+            </Tooltip>
+            {noteInTrash ? (
+              <>
+                <form action={restoreNote}>
+                  <input name="id" type="hidden" value={note.id} />
+                  <Button size="sm" type="submit" variant="secondary">
+                    <ArchiveRestore className="size-4" />
+                    Recover
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <>
+                <form action={togglePinned}>
+                  <input name="id" type="hidden" value={note.id} />
+                  <input
+                    name="is_pinned"
+                    type="hidden"
+                    value={String(note.is_pinned)}
+                  />
+                  <Button size="sm" type="submit" variant="secondary">
+                    {note.is_pinned ? (
+                      <PinOff className="size-4" />
+                    ) : (
+                      <Pin className="size-4" />
+                    )}
+                    {note.is_pinned ? "Unpin" : "Pin"}
+                  </Button>
+                </form>
+                <form action={note.archived_at ? restoreNote : archiveNote}>
+                  <input name="id" type="hidden" value={note.id} />
+                  <Button size="sm" type="submit" variant="secondary">
+                    {note.archived_at ? (
+                      <ArchiveRestore className="size-4" />
+                    ) : (
+                      <Archive className="size-4" />
+                    )}
+                    {note.archived_at ? "Restore" : "Archive"}
+                  </Button>
+                </form>
+                <form action={trashNote}>
+                  <input name="id" type="hidden" value={note.id} />
+                  <Button size="sm" type="submit" variant="destructive">
+                    <Trash2 className="size-4" />
+                    Move to trash
+                  </Button>
+                </form>
+              </>
+            )}
           </div>
         </div>
         {note.tags.length ? (
@@ -572,7 +656,7 @@ function EmptyList({ query }: { query: ReturnType<typeof normalizeNotesQuery> })
   return (
     <div className="grid gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
       <p>
-        {query.q || query.tag || query.view === "archived"
+        {query.q || query.tag || query.view !== "active"
           ? "No notes match this view."
           : "No notes yet."}
       </p>

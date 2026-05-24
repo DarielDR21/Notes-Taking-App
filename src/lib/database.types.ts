@@ -18,6 +18,7 @@ export type Database = {
           tags: string[];
           is_pinned: boolean;
           archived_at: string | null;
+          trashed_at: string | null;
           created_at: string;
           updated_at: string;
           search_vector: unknown;
@@ -30,6 +31,7 @@ export type Database = {
           tags?: string[];
           is_pinned?: boolean;
           archived_at?: string | null;
+          trashed_at?: string | null;
           created_at?: string;
           updated_at?: string;
           search_vector?: never;
@@ -42,6 +44,7 @@ export type Database = {
           tags?: string[];
           is_pinned?: boolean;
           archived_at?: string | null;
+          trashed_at?: string | null;
           created_at?: string;
           updated_at?: string;
           search_vector?: never;
