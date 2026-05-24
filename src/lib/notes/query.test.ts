@@ -28,6 +28,10 @@ describe("normalizeNotesQuery", () => {
     expect(normalizeNotesQuery({ view: "all" }).view).toBe("active");
   });
 
+  it("supports the trash view", () => {
+    expect(normalizeNotesQuery({ view: "trash" }).view).toBe("trash");
+  });
+
   it("falls back to the first page for invalid page params", () => {
     expect(normalizeNotesQuery({ page: "-2" }).page).toBe(1);
   });
@@ -47,6 +51,15 @@ describe("buildNotesHref", () => {
     expect(buildNotesHref(query)).toBe(
       "/notes?q=hello&tag=work&view=archived&note=note-id&mode=edit&page=3",
     );
+  });
+
+  it("includes the trash view in built URLs", () => {
+    const query = normalizeNotesQuery({
+      view: "trash",
+      page: "2",
+    });
+
+    expect(buildNotesHref(query)).toBe("/notes?view=trash&page=2");
   });
 
   it("omits empty defaults", () => {

@@ -11,7 +11,7 @@ export type NotesSearchParams = {
 export type NormalizedNotesQuery = {
   q: string;
   tag: string;
-  view: "active" | "archived";
+  view: "active" | "archived" | "trash";
   noteId: string;
   mode: "browse" | "edit";
   page: number;
@@ -25,7 +25,9 @@ function first(value: string | string[] | undefined) {
 export function normalizeNotesQuery(
   params: NotesSearchParams,
 ): NormalizedNotesQuery {
-  const view = first(params.view) === "archived" ? "archived" : "active";
+  const rawView = first(params.view);
+  const view =
+    rawView === "archived" || rawView === "trash" ? rawView : "active";
   const page = Number.parseInt(first(params.page) ?? "1", 10);
 
   return {
@@ -48,7 +50,7 @@ export function buildNotesHref(
 
   if (next.q) params.set("q", next.q);
   if (next.tag) params.set("tag", next.tag);
-  if (next.view === "archived") params.set("view", "archived");
+  if (next.view !== "active") params.set("view", next.view);
   if (next.noteId) params.set("note", next.noteId);
   if (next.mode === "edit") params.set("mode", "edit");
   if (next.page > 1) params.set("page", String(next.page));
