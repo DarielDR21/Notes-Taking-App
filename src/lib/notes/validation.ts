@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const maxTags = 8;
+const maxTagLength = 32;
 
 export const noteIdSchema = z.string().uuid();
 
@@ -20,7 +21,7 @@ export function parseTags(value: FormDataEntryValue | null): string[] {
     new Set(
       value
         .split(",")
-        .map((tag) => tag.trim().toLowerCase())
+        .map((tag) => tag.trim().toLowerCase().slice(0, maxTagLength))
         .filter(Boolean),
     ),
   ).slice(0, maxTags);

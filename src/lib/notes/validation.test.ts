@@ -12,6 +12,11 @@ describe("parseTags", () => {
   it("returns an empty list for missing tags", () => {
     expect(parseTags(null)).toEqual([]);
   });
+
+  it("truncates tags longer than 32 characters", () => {
+    const longTag = "a".repeat(40);
+    expect(parseTags(longTag)).toEqual(["a".repeat(32)]);
+  });
 });
 
 describe("parseNoteFormData", () => {
