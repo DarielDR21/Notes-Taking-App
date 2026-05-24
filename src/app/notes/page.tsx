@@ -7,10 +7,10 @@ import {
   ArrowRight,
   BookOpenText,
   LogOut,
-  Pin,
-  PinOff,
   Plus,
   RotateCcw,
+  Star,
+  StarOff,
   Trash2,
   UserCircle,
   CheckCircle2,
@@ -24,7 +24,7 @@ import {
   deleteAllTrashedNotes,
   restoreNote,
   trashNote,
-  togglePinned,
+  toggleFavorite,
   updateNote,
 } from "@/app/notes/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -47,7 +47,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Note } from "@/lib/database.types";
-import { collectTags, listNotes } from "@/lib/notes/data";
+import { listNotes, listTags } from "@/lib/notes/data";
 import {
   buildNotesHref,
   normalizeNotesQuery,
@@ -91,9 +91,11 @@ async function getNotesPageModel(query: ReturnType<typeof normalizeNotesQuery>) 
     redirect("/login");
   }
 
-  const notes = await listNotes(supabase, query);
+  const [notes, tags] = await Promise.all([
+    listNotes(supabase, query),
+    listTags(supabase),
+  ]);
   const selected = notes.find((note) => note.id === query.noteId) ?? null;
-  const tags = collectTags(notes);
 
   return {
     notes,
@@ -295,6 +297,7 @@ function NotesWorkspace({
                   })}
                   key={note.id}
                   note={note}
+                  returnTo={buildNotesHref(query)}
                   selected={editorOpen && selected.id === note.id}
                 />
               ))}
@@ -437,10 +440,12 @@ function BoardPagination({
 function NoteListItem({
   href,
   note,
+  returnTo,
   selected,
 }: {
   href: string;
   note: Note;
+  returnTo: string;
   selected: boolean;
 }) {
   return (
@@ -456,40 +461,58 @@ function NoteListItem({
           <h2 className="line-clamp-1 text-sm font-medium">{note.title}</h2>
         </Link>
         <div className="flex items-center gap-1">
-          {note.is_pinned && !note.trashed_at ? (
-            <Pin className="mt-0.5 size-3 text-primary" />
-          ) : null}
           {note.trashed_at ? (
             <form action={restoreNote}>
               <input name="id" type="hidden" value={note.id} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" type="submit" variant="secondary">
-                    <ArchiveRestore className="size-4" />
-                    <span className="sr-only">Recover</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Recover</TooltipContent>
-              </Tooltip>
+              <Button
+                aria-label="Recover"
+                size="icon"
+                title="Recover"
+                type="submit"
+                variant="secondary"
+              >
+                <ArchiveRestore className="size-4" />
+              </Button>
             </form>
           ) : (
-            <form action={trashNote}>
-              <input name="id" type="hidden" value={note.id} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    size="icon"
-                    type="submit"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-4" />
-                    <span className="sr-only">Delete</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Delete</TooltipContent>
-              </Tooltip>
-            </form>
+            <>
+              <form action={toggleFavorite}>
+                <input name="id" type="hidden" value={note.id} />
+                <input
+                  name="is_favorite"
+                  type="hidden"
+                  value={String(note.is_pinned)}
+                />
+                <input name="return_to" type="hidden" value={returnTo} />
+                <Button
+                  aria-label={note.is_pinned ? "Unfavorite" : "Favorite"}
+                  className="size-7 text-muted-foreground hover:text-primary"
+                  size="icon"
+                  title={note.is_pinned ? "Unfavorite" : "Favorite"}
+                  type="submit"
+                  variant="ghost"
+                >
+                  {note.is_pinned ? (
+                    <Star className="size-4 fill-primary text-primary" />
+                  ) : (
+                    <StarOff className="size-4" />
+                  )}
+                </Button>
+              </form>
+              <form action={trashNote}>
+                <input name="id" type="hidden" value={note.id} />
+                <Button
+                  aria-label="Delete"
+                  className="size-7 text-muted-foreground hover:text-destructive"
+                  size="icon"
+                  title="Delete"
+                  type="submit"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </form>
+            </>
           )}
         </div>
       </div>
@@ -553,20 +576,20 @@ function NoteEditor({
               </>
             ) : (
               <>
-                <form action={togglePinned}>
+                <form action={toggleFavorite}>
                   <input name="id" type="hidden" value={note.id} />
                   <input
-                    name="is_pinned"
+                    name="is_favorite"
                     type="hidden"
                     value={String(note.is_pinned)}
                   />
                   <Button size="sm" type="submit" variant="secondary">
                     {note.is_pinned ? (
-                      <PinOff className="size-4" />
+                      <StarOff className="size-4" />
                     ) : (
-                      <Pin className="size-4" />
+                      <Star className="size-4" />
                     )}
-                    {note.is_pinned ? "Unpin" : "Pin"}
+                    {note.is_pinned ? "Unfavorite" : "Favorite"}
                   </Button>
                 </form>
                 <form action={note.archived_at ? restoreNote : archiveNote}>

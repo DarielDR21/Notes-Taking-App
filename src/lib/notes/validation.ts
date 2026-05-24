@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 const maxTags = 8;
+const maxTagLength = 32;
 
 export const noteIdSchema = z.string().uuid();
 
 export const noteFormSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(160),
   body: z.string().trim().max(20000).default(""),
-  tags: z.array(z.string().min(1).max(32)).max(maxTags),
 });
 
 export type NoteFormInput = z.infer<typeof noteFormSchema>;
@@ -21,7 +21,7 @@ export function parseTags(value: FormDataEntryValue | null): string[] {
     new Set(
       value
         .split(",")
-        .map((tag) => tag.trim().toLowerCase())
+        .map((tag) => tag.trim().toLowerCase().slice(0, maxTagLength))
         .filter(Boolean),
     ),
   ).slice(0, maxTags);
@@ -31,7 +31,6 @@ export function parseNoteFormData(formData: FormData): NoteFormInput {
   return noteFormSchema.parse({
     title: formData.get("title"),
     body: formData.get("body") ?? "",
-    tags: parseTags(formData.get("tags")),
   });
 }
 
